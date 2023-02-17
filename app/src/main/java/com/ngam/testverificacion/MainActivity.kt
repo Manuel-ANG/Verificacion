@@ -9,7 +9,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import com.ngam.check_device.logic.CheckDevice
 import com.ngam.testverificacion.ui.theme.TestVerificacionTheme
 
 class MainActivity : ComponentActivity() {
@@ -31,6 +33,12 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun Greeting(name: String) {
+    val context = LocalContext.current
+    try {
+        CheckDevice(context).build()
+    } catch (e: Throwable) {
+        e.printStackTrace()
+    }
     Text(text = "Hello $name!")
 }
 

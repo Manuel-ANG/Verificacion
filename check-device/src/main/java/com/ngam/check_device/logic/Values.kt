@@ -11,16 +11,11 @@ data class Values(
     private var signature: Boolean?
 ) {
     fun validate(): Boolean {
-        if (root == null) {
-            throw Exception("Not initialized")
+        val items = listOf(root, usbDebug, emulator, hooking, signature)
+        if (items.filterNotNull().isEmpty()) {
+            throw ValidateException("Not initialized")
         } else {
-            val items = listOf(usbDebug, emulator, hooking, signature)
-            val ret = items.find { item -> item != null && item }
-            return if (ret != null) {
-                root!! || ret
-            } else {
-                root!!
-            }
+            return items.find { item -> item != null && item } ?: false
         }
     }
 }
