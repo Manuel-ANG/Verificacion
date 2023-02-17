@@ -8,11 +8,12 @@ import android.os.Build
 import android.os.Debug
 import android.provider.Settings
 import android.util.Base64
+import androidx.annotation.Keep
 import com.scottyab.rootbeer.RootBeer
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.security.MessageDigest
-
+@Keep
 class CheckDevice(private val context: Context) {
     private var isRoot: Boolean? = null
     private var isSignatureValid: Boolean? = null
