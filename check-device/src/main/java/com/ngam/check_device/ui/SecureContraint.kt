@@ -1,4 +1,4 @@
-package com.ngam.check_device.logic.ui
+package com.ngam.check_device.ui
 
 import android.content.Context
 import android.util.AttributeSet
