@@ -20,4 +20,4 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 #-keep class com.ngam.check_device.**{*;}
--keep,allowobfuscation,allowshrinking class com.ngam.check_device.logic.Values
+-dontwarn java.lang.invoke.StringConcatFactory
