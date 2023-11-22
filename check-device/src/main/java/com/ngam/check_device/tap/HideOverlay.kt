@@ -5,8 +5,9 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.view.Window
+import androidx.annotation.Keep
 import androidx.core.app.ActivityCompat
-
+@Keep
 class HideOverlay(private val context: Context) {
     fun apply(window: Window){
         if (ActivityCompat.checkSelfPermission(context,Manifest.permission.HIDE_OVERLAY_WINDOWS)==PackageManager.PERMISSION_GRANTED){

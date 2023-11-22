@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.ngam.check_device.logic.CheckDevice
+import com.ngam.check_device.tap.HideOverlay
 import com.ngam.testverificacion.ui.theme.TestVerificacionTheme
 
 class MainActivity : ComponentActivity() {
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
 fun Greeting(name: String) {
     val context = LocalContext.current
     try {
+        HideOverlay(context)
         CheckDevice(context).build()
     } catch (e: Throwable) {
         e.printStackTrace()
