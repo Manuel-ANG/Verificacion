@@ -19,4 +19,5 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
--keep class com.ngam.check_device.**{*;}
+#-keep class com.ngam.check_device.**{*;}
+-keep,allowobfuscation,allowshrinking class com.ngam.check_device.logic.Values
