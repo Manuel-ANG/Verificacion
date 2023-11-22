@@ -1,4 +1,4 @@
-package com.ngam.check_device.ui
+package com.ngam.check_device.tap
 
 import android.content.Context
 import android.util.AttributeSet
