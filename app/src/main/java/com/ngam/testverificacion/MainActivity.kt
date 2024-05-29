@@ -1,5 +1,6 @@
 package com.ngam.testverificacion
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,9 +9,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
 import com.ngam.check_device.logic.CheckDevice
 import com.ngam.check_device.tap.HideOverlay
 import com.ngam.testverificacion.ui.theme.TestVerificacionTheme
@@ -20,12 +22,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             TestVerificacionTheme {
-                // A surface container using the 'background' color from the theme
                 Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background
                 ) {
-                    Greeting("Android")
+                    Greeting()
                 }
             }
         }
@@ -33,21 +34,19 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String) {
+fun Greeting() {
     val context = LocalContext.current
+    val text = rememberSaveable { mutableStateOf("") }
     try {
-        HideOverlay(context)
-        CheckDevice(context).build()
+        val activity = context as Activity
+        HideOverlay(context).apply(activity.window)
+        text.value = if (CheckDevice(context).checkIsRoot().checkIsHooking().checkIsEmulador().checkIsUsbEnabled().build()) {
+            "tu dispositivo es vulnerable"
+        } else {
+            "tu dispostivo es seguro"
+        }
     } catch (e: Throwable) {
         e.printStackTrace()
     }
-    Text(text = "Hello $name!")
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    TestVerificacionTheme {
-        Greeting("Android")
-    }
+    Text(text = text.value)
 }
