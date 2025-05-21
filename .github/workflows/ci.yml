@@ -19,5 +19,11 @@ jobs:
           cache: gradle
       - name: Setup gradle
         uses: gradle/gradle-build-action@v2
+
+      - name: Access buildConfig
+        env:
+          BASE_URL: ${{secrets.BASE_URL}}
+        run: echo BASE_URL=\"$BASE_URL\" > ./local.properties
+
       - name: Build app
         run: ./gradlew assemble
