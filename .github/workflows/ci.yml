@@ -19,10 +19,6 @@ jobs:
           cache: gradle
       - name: Setup gradle
         uses: gradle/gradle-build-action@v2
-
-      - name: build folder
-        run: chmod +x /build
-
       - name: Access buildConfig
         env:
           BASE_URL: ${{secrets.BASE_URL}}
