@@ -1,9 +1,12 @@
 package com.ngam.check_device.logic
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.Signature
+import android.net.Uri
 import android.os.Build
 import android.os.Debug
 import android.provider.Settings
@@ -13,6 +16,7 @@ import com.scottyab.rootbeer.RootBeer
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.security.MessageDigest
+
 @Keep
 class CheckDevice(private val context: Context) {
     private var isRoot: Boolean? = null
@@ -20,6 +24,7 @@ class CheckDevice(private val context: Context) {
     private var usbEnabled: Boolean? = null
     private var isEmulator: Boolean? = null
     private var isHooking: Boolean? = null
+    private var isUnknownOrigin: Boolean? = null
 
     fun checkIsRoot() = apply {
         if (isRoot == null) {
@@ -61,16 +66,42 @@ class CheckDevice(private val context: Context) {
         }
     }
 
+    fun checkOrigin()=apply{
+        if(isUnknownOrigin==null){
+            runBlocking {
+                isUnknownOrigin=unknownOrigin()
+            }
+        }
+    }
+
     fun build(): Boolean {
         return Values(isRoot, usbEnabled, isEmulator, isHooking, isSignatureValid).validate()
     }
 
     private fun usbDebug(): Boolean {
-        return Settings.Global.getInt(context.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 || Settings.Global.getInt(context.contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
+        return Settings.Global.getInt(context.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 ||
+                Settings.Global.getInt(context.contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
     }
 
     private fun isEmulator(): Boolean {
         return Debug.isDebuggerConnected() || Debug.waitingForDebugger() || checkBuildConfig() || checkEmulatorFiles()
+    }
+
+    private fun unknownOrigin():Boolean{
+        return Settings.Global.getInt(context.contentResolver, Settings.Global.INSTALL_NON_MARKET_APPS, 0) == 1
+    }
+
+    fun algo(activity: Activity){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!activity.packageManager.canRequestPackageInstalls()) {
+                activity.startActivityForResult(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).setData(
+                    Uri.parse(String.format("package:%s", context.packageName))), 1);
+            } else {
+                //permiso para instalar apps concedido
+            }
+        } else {
+            println("ALGO PASA ACA")
+        }
     }
 
     private fun checkBuildConfig(): Boolean {
@@ -171,12 +202,19 @@ class CheckDevice(private val context: Context) {
     @SuppressLint("PackageManagerGetSignatures")
     private fun getAppSignature(): Signature? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(getFlags().toLong())
+            context.packageManager.getPackageInfo(
+                context.packageName, PackageManager.PackageInfoFlags.of(getFlags().toLong())
             ).signingInfo.apkContentsSigners.firstOrNull()
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.getPackageInfo(context.packageName, getFlags()).signingInfo.apkContentsSigners.firstOrNull()
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                getFlags()
+            ).signingInfo.apkContentsSigners.firstOrNull()
         } else {
-            context.packageManager.getPackageInfo(context.packageName, getFlags()).signatures.firstOrNull()
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                getFlags()
+            ).signatures.firstOrNull()
         }
     }
 
@@ -185,9 +223,11 @@ class CheckDevice(private val context: Context) {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> {
                 PackageManager.GET_SIGNING_CERTIFICATES or PackageManager.GET_PERMISSIONS
             }
+
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU -> {
                 PackageManager.GET_SIGNING_CERTIFICATES
             }
+
             else -> {
                 PackageManager.GET_SIGNATURES
             }

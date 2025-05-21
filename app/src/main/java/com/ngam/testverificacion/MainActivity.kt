@@ -1,6 +1,7 @@
 package com.ngam.testverificacion
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.ngam.check_device.logic.CheckDevice
 import com.ngam.check_device.tap.HideOverlay
+import com.ngam.testverificacion.Logic.Validation
 import com.ngam.testverificacion.ui.theme.TestVerificacionTheme
 
 class MainActivity : ComponentActivity() {
@@ -40,11 +42,14 @@ fun Greeting() {
     try {
         val activity = context as Activity
         HideOverlay(context).apply(activity.window)
-        text.value = if (CheckDevice(context).checkIsRoot().checkIsHooking().checkIsEmulador().checkIsUsbEnabled().build()) {
+        text.value = if (CheckDevice(context).checkIsRoot().checkIsHooking().checkIsEmulador().checkIsUsbEnabled().checkOrigin().build()) {
             "tu dispositivo es vulnerable"
+
         } else {
             "tu dispostivo es seguro"
         }
+        //CheckDevice(context).algo(activity)
+        Validation(context).bind()
     } catch (e: Throwable) {
         e.printStackTrace()
     }
