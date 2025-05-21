@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "2230814619",
+    "project_id": "testplayintegrity-77da3",
+    "storage_bucket": "testplayintegrity-77da3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:2230814619:android:2ee66497b3e2565168c33e",
+        "android_client_info": {
+          "package_name": "com.ngam.testverificacion"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBF7hbyZ4H49TT9kR_FaLlSuZTYChHvMyA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
