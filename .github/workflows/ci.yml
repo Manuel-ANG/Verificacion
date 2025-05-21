@@ -26,4 +26,9 @@ jobs:
         run: echo BASE_URL=\"$BASE_URL\" > ./local.properties
 
       - name: Build app
-        run: ./gradlew assemble
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          path: app/build/outputs/apk/debug/app.apk
