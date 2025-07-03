@@ -204,17 +204,17 @@ class CheckDevice(private val context: Context) {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.packageManager.getPackageInfo(
                 context.packageName, PackageManager.PackageInfoFlags.of(getFlags().toLong())
-            ).signingInfo.apkContentsSigners.firstOrNull()
+            ).signingInfo?.apkContentsSigners?.firstOrNull()
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             context.packageManager.getPackageInfo(
                 context.packageName,
                 getFlags()
-            ).signingInfo.apkContentsSigners.firstOrNull()
+            ).signingInfo?.apkContentsSigners?.firstOrNull()
         } else {
             context.packageManager.getPackageInfo(
                 context.packageName,
                 getFlags()
-            ).signatures.firstOrNull()
+            ).signatures?.firstOrNull()
         }
     }
 
