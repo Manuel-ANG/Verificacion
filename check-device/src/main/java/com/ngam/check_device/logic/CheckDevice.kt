@@ -53,7 +53,7 @@ class CheckDevice(private val context: Context) {
     fun checkIsHooking() = apply {
         if (isHooking == null) {
             runBlocking {
-                isHooking = detected()
+                isHooking = detected() || detectFrida() || detectXposed()|| detectSuspiciousLibraries()
             }
         }
     }
@@ -66,10 +66,10 @@ class CheckDevice(private val context: Context) {
         }
     }
 
-    fun checkOrigin()=apply{
-        if(isUnknownOrigin==null){
+    fun checkOrigin() = apply {
+        if (isUnknownOrigin == null) {
             runBlocking {
-                isUnknownOrigin=unknownOrigin()
+                isUnknownOrigin = unknownOrigin()
             }
         }
     }
@@ -79,29 +79,15 @@ class CheckDevice(private val context: Context) {
     }
 
     private fun usbDebug(): Boolean {
-        return Settings.Global.getInt(context.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 ||
-                Settings.Global.getInt(context.contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
+        return Settings.Global.getInt(context.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 || Settings.Global.getInt(context.contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
     }
 
     private fun isEmulator(): Boolean {
         return Debug.isDebuggerConnected() || Debug.waitingForDebugger() || checkBuildConfig() || checkEmulatorFiles()
     }
 
-    private fun unknownOrigin():Boolean{
+    private fun unknownOrigin(): Boolean {
         return Settings.Global.getInt(context.contentResolver, Settings.Global.INSTALL_NON_MARKET_APPS, 0) == 1
-    }
-
-    fun algo(activity: Activity){
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            if (!activity.packageManager.canRequestPackageInstalls()) {
-                activity.startActivityForResult(Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).setData(
-                    Uri.parse(String.format("package:%s", context.packageName))), 1);
-            } else {
-                //permiso para instalar apps concedido
-            }
-        } else {
-            println("ALGO PASA ACA")
-        }
     }
 
     private fun checkBuildConfig(): Boolean {
@@ -248,5 +234,40 @@ class CheckDevice(private val context: Context) {
         } else {
             null
         }
+    }
+
+    private fun detectXposed(): Boolean {
+        return try {
+            val xposedClass = Class.forName("de.robv.android.xposed.XposedBridge")
+            xposedClass != null
+        } catch (_: ClassNotFoundException) {
+            false
+        }
+    }
+
+    private fun detectFrida(): Boolean {
+        val processes = listOf("frida-server", "frida-agent")
+        for (process in processes) {
+            try {
+                val processBuilder = ProcessBuilder("ps")
+                val processList = processBuilder.start().inputStream.bufferedReader().readText()
+                if (processList.contains(process))
+                    return true
+            } catch (_: Exception) {}
+        }
+        return false
+    }
+
+    private fun detectSuspiciousLibraries(): Boolean {
+        val suspiciousLibs = listOf("frida", "xposed", "substrate")
+        val maps = File("/proc/self/maps")
+        if (maps.exists()) {
+            val content = maps.readText()
+            for (lib in suspiciousLibs) {
+                if (content.contains(lib, ignoreCase = true))
+                    return true
+            }
+        }
+        return false
     }
 }

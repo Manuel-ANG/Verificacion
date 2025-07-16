@@ -48,8 +48,7 @@ fun Greeting() {
         } else {
             "tu dispostivo es seguro"
         }
-        //CheckDevice(context).algo(activity)
-        Validation(context).bind()
+        //Validation(context).bind()
     } catch (e: Throwable) {
         e.printStackTrace()
     }
