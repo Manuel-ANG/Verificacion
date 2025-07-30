@@ -1,12 +1,9 @@
 package com.ngam.check_device.logic
 
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.Signature
-import android.net.Uri
 import android.os.Build
 import android.os.Debug
 import android.provider.Settings
@@ -14,7 +11,9 @@ import android.util.Base64
 import androidx.annotation.Keep
 import com.scottyab.rootbeer.RootBeer
 import kotlinx.coroutines.runBlocking
+import java.io.BufferedReader
 import java.io.File
+import java.io.InputStreamReader
 import java.security.MessageDigest
 
 @Keep
@@ -53,7 +52,7 @@ class CheckDevice(private val context: Context) {
     fun checkIsHooking() = apply {
         if (isHooking == null) {
             runBlocking {
-                isHooking = detected() || detectFrida() || detectXposed()|| detectSuspiciousLibraries()
+                isHooking = detected() || detectFrida() || detectXposed()|| detectSuspiciousLibraries() || blockPtrace()
             }
         }
     }
@@ -269,5 +268,117 @@ class CheckDevice(private val context: Context) {
             }
         }
         return false
+    }
+
+    private fun checkTracerPid(): Int {
+        return try {
+            val statusFile = File("/proc/self/status")
+            if (statusFile.exists()) {
+                val content = statusFile.readText()
+                val lines = content.split("\n")
+                for (line in lines) {
+                    if (line.startsWith("TracerPid:")) {
+                        val tracerPid = line.substringAfter(":").trim()
+                        return tracerPid.toIntOrNull() ?: 0
+                    }
+                }
+            }
+            0
+        } catch (e: Exception) {
+            0
+        }
+    }
+
+    private fun checkDebugFlags(): Boolean {
+        return try {
+            val statusFile = File("/proc/self/status")
+            if (statusFile.exists()) {
+                val content = statusFile.readText()
+                val lines = content.split("\n")
+                for (line in lines) {
+                    if (line.startsWith("State:")) {
+                        val state = line.substringAfter(":").trim()
+                        return state.contains("T") || state.contains("t")
+                    }
+                }
+            }
+            false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun checkPtraceStatus(): Boolean {
+        return try {
+            val process = Runtime.getRuntime().exec("cat /proc/self/status")
+            val reader = BufferedReader(InputStreamReader(process.inputStream))
+            reader.readText()
+            process.waitFor()
+            process.exitValue() == 0
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun checkDebugFiles(): Boolean {
+        return try {
+            val debugFiles = listOf(
+                "/proc/self/fd/0",
+                "/proc/self/fd/1",
+                "/proc/self/fd/2"
+            )
+
+            for (file in debugFiles) {
+                val debugFile = File(file)
+                if (debugFile.exists()) {
+                    val target = debugFile.canonicalPath
+                    if (target.contains("gdb") || target.contains("lldb") || target.contains("debugger")) {
+                        return true
+                    }
+                }
+            }
+            false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun checkDebugEnvironment(): Boolean {
+        return try {
+            val debugVars = listOf(
+                "ANDROID_DEBUGGABLE",
+                "JAVA_DEBUG",
+                "DEBUG"
+            )
+
+            for (varName in debugVars) {
+                val value = System.getenv(varName)
+                if (value != null && value.isNotEmpty()) {
+                    return true
+                }
+            }
+            false
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun blockPtrace(): Boolean {
+        return try {
+            val tracerPid = checkTracerPid()
+            val debuggerAttached = Debug.isDebuggerConnected()
+            val debugFlags = checkDebugFlags()
+            val ptraceStatus = checkPtraceStatus()
+            val debugFiles = checkDebugFiles()
+            val debugEnv = checkDebugEnvironment()
+            val isBeingDebugged = tracerPid > 0 || debuggerAttached || debugFlags || ptraceStatus || debugFiles || debugEnv
+            if (isBeingDebugged) {
+                false
+            } else {
+                true
+            }
+        } catch (e: Exception) {
+            false
+        }
     }
 }
