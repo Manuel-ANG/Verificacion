@@ -2,5 +2,13 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.HIDE_OVERLAY_WINDOWS" />
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <queries>
+        <package android:name="com.charles.proxy"/>
+        <package android:name="com.fiddler.android"/>
+        <package android:name="com.burp.android"/>
+        <package android:name="com.proxyman.ios"/>
+        <package android:name="com.proxyman.mac"/>
+        <package android:name="com.wireless.sslstrip"/>
+        <package android:name="com.mitmproxy.android"/>
+    </queries>
 </manifest>

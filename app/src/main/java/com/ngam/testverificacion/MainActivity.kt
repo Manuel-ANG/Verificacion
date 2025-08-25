@@ -46,7 +46,6 @@ fun Greeting() {
         } else {
             "tu dispostivo es seguro"
         }
-        //Validation(context).bind()
     } catch (e: Throwable) {
         e.printStackTrace()
     }
