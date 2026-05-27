@@ -52,7 +52,7 @@ afterEvaluate {
                 from components.release
                 groupId = 'com.github.Manuel-ANG'
                 artifactId = 'Verificacion'
-                version = '1.1.1.2'
+                version = '1.1.1.3'
             }
         }
     }
