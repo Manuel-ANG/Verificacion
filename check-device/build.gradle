@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'org.jetbrains.kotlin.android'
+    id 'maven-publish'
 }
 
 android {
@@ -28,6 +29,9 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
+    kotlin {
+        jvmToolchain(17)
+    }
 }
 
 dependencies {
@@ -40,4 +44,16 @@ dependencies {
     implementation 'com.scottyab:rootbeer-lib:0.1.2'
     implementation 'com.squareup.okhttp3:okhttp:5.3.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-collections-immutable:0.4.0'
+}
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                groupId = 'com.github.Manuel-ANG'
+                artifactId = 'Verificacion'
+                version = '1.1.1.2'
+            }
+        }
+    }
 }
