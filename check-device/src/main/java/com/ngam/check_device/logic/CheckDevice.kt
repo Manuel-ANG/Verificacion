@@ -10,7 +10,12 @@ import android.provider.Settings
 import android.util.Base64
 import androidx.annotation.Keep
 import com.scottyab.rootbeer.RootBeer
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -18,67 +23,81 @@ import java.security.MessageDigest
 
 @Keep
 class CheckDevice(private val context: Context) {
-    private var isRoot: Boolean? = null
-    private var isSignatureValid: Boolean? = null
-    private var usbEnabled: Boolean? = null
-    private var isEmulator: Boolean? = null
-    private var isHooking: Boolean? = null
-    private var isUnknownOrigin: Boolean? = null
+    private var report = persistentMapOf<String, Boolean>()
 
     fun checkIsRoot() = apply {
-        if (isRoot == null) {
-            runBlocking {
-                isRoot = RootBeer(context).isRooted
-            }
-        }
+        report = report.put("isRoot", RootBeer(context).isRooted || checkRootMethod1() || checkRootMethod2() || checkRootMethod3())
     }
 
     fun checkIsUsbEnabled() = apply {
-        if (usbEnabled == null) {
-            runBlocking {
-                usbEnabled = usbDebug()
-            }
-        }
+        report = report.put("isUsbEnabled", usbDebug())
     }
 
     fun checkIsEmulador() = apply {
-        if (isEmulator == null) {
-            runBlocking {
-                isEmulator = isEmulator()
-            }
-        }
+        report = report.put("isEmulator", isEmulator())
     }
 
     fun checkIsHooking() = apply {
-        if (isHooking == null) {
-            runBlocking {
-                isHooking = detected() || detectFrida() || detectXposed()|| detectSuspiciousLibraries() || blockPtrace()
-            }
-        }
+        report = report.put(
+            "isHooking",
+            detected() || detectFrida() || detectFridaMethod2() || detectXposed() || detectSuspiciousLibraries() || blockPtrace()
+        )
     }
 
     fun checkSignature(signature: String) = apply {
-        if (isSignatureValid == null) {
-            runBlocking {
-                isSignatureValid = validateSignature(signature)
-            }
-        }
+        report = report.put("isValidSignaure", validateSignature(signature))
     }
 
     fun checkOrigin() = apply {
-        if (isUnknownOrigin == null) {
-            runBlocking {
-                isUnknownOrigin = unknownOrigin()
-            }
+        report = report.put("isUnknowOrigin", unknownOrigin())
+    }
+
+    suspend fun build(): Boolean {
+        return withContext(Dispatchers.IO) {
+            report.values.any { it }
         }
     }
 
-    fun build(): Boolean {
-        return Values(isRoot, usbEnabled, isEmulator, isHooking, isSignatureValid).validate()
+    private fun checkRootMethod1(): Boolean {
+        val buildTags = Build.TAGS
+        return buildTags != null && buildTags.contains("test-keys")
+    }
+
+    private fun checkRootMethod2(): Boolean {
+        val paths = arrayOf(
+            "/system/app/Superuser.apk", "/sbin/su", "/system/bin/su", "/system/xbin/su",
+            "/data/local/xbin/su", "/data/local/bin/su", "/system/sd/xbin/su",
+            "/system/bin/failsafe/su", "/data/local/su", "/su/bin/su"
+        )
+        for (path in paths) {
+            if (File(path).exists()) return true
+        }
+        return false
+    }
+
+    private fun checkRootMethod3(): Boolean {
+        var process: Process? = null
+        return try {
+            process = Runtime.getRuntime().exec(arrayOf("/system/xbin/which", "su"))
+            val inReader = BufferedReader(InputStreamReader(process.inputStream))
+            inReader.readLine() != null
+        } catch (t: Throwable) {
+            false
+        } finally {
+            process?.destroy()
+        }
     }
 
     private fun usbDebug(): Boolean {
-        return Settings.Global.getInt(context.contentResolver, Settings.Global.ADB_ENABLED, 0) == 1 || Settings.Global.getInt(context.contentResolver, Settings.Global.DEVELOPMENT_SETTINGS_ENABLED, 0) == 1
+        return Settings.Global.getInt(
+            context.contentResolver,
+            Settings.Global.ADB_ENABLED,
+            0
+        ) == 1 || Settings.Global.getInt(
+            context.contentResolver,
+            Settings.Global.DEVELOPMENT_SETTINGS_ENABLED,
+            0
+        ) == 1
     }
 
     private fun isEmulator(): Boolean {
@@ -86,7 +105,14 @@ class CheckDevice(private val context: Context) {
     }
 
     private fun unknownOrigin(): Boolean {
-        return Settings.Global.getInt(context.contentResolver, Settings.Global.INSTALL_NON_MARKET_APPS, 0) == 1
+        val pm = context.packageManager
+        val installer = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            pm.getInstallSourceInfo(context.packageName).installingPackageName
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getInstallerPackageName(context.packageName)
+        }
+        return installer != "com.android.vending"
     }
 
     private fun checkBuildConfig(): Boolean {
@@ -156,30 +182,20 @@ class CheckDevice(private val context: Context) {
     }
 
     private fun detected(): Boolean {
-        var dectected = false
         try {
-            throw Exception()
+            throw Exception("Stack Trace Check")
         } catch (e: Exception) {
-            var zygoteInitCallCount = 0
-            for (stackTraceElement in e.stackTrace) {
-                if (stackTraceElement.className == "com.android.internal.os.ZygoteInit") {
-                    zygoteInitCallCount++
-                    if (zygoteInitCallCount == 2) {
-                        dectected = true
-                    }
-                }
-                if (stackTraceElement.className == "com.saurik.substrate.MS$2" && stackTraceElement.methodName == "invoked") {
-                    dectected = true
-                }
-                if (stackTraceElement.className == "de.robv.android.xposed.XposedBridge" && stackTraceElement.methodName == "main") {
-                    dectected = true
-                }
-                if (stackTraceElement.className == "de.robv.android.xposed.XposedBridge" && stackTraceElement.methodName == "handleHookedMethod") {
-                    dectected = true
+            for (stackElement in e.stackTrace) {
+                val className = stackElement.className.lowercase()
+                if (className.contains("com.saurik.substrate") ||
+                    className.contains("de.robv.android.xposed") ||
+                    className.contains("frida")
+                ) {
+                    return true
                 }
             }
         }
-        return dectected
+        return false
     }
 
     private fun validateSignature(signature: String) = getAppSignature().string() != signature
@@ -236,12 +252,23 @@ class CheckDevice(private val context: Context) {
     }
 
     private fun detectXposed(): Boolean {
-        return try {
-            val xposedClass = Class.forName("de.robv.android.xposed.XposedBridge")
-            xposedClass != null
-        } catch (_: ClassNotFoundException) {
-            false
+        try {
+            val file = File("/proc/self/maps")
+            if (file.exists()) {
+                val reader = BufferedReader(InputStreamReader(file.inputStream()))
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    if (line?.contains("XposedBridge.jar", ignoreCase = true) == true) {
+                        return true
+                    }
+                }
+            }
+            Class.forName("de.robv.android.xposed.XposedBridge")
+            return true
+        } catch (e: ClassNotFoundException) {
+        } catch (e: Exception) {
         }
+        return false
     }
 
     private fun detectFrida(): Boolean {
@@ -252,7 +279,26 @@ class CheckDevice(private val context: Context) {
                 val processList = processBuilder.start().inputStream.bufferedReader().readText()
                 if (processList.contains(process))
                     return true
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
+        }
+        return false
+    }
+
+    private fun detectFridaMethod2(): Boolean {
+        try {
+            val file = File("/proc/self/maps")
+            if (file.exists()) {
+                val reader = BufferedReader(InputStreamReader(file.inputStream()))
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    if (line?.contains("frida", ignoreCase = true) == true) {
+                        return true
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Ignorar errores
         }
         return false
     }
@@ -371,7 +417,8 @@ class CheckDevice(private val context: Context) {
             val ptraceStatus = checkPtraceStatus()
             val debugFiles = checkDebugFiles()
             val debugEnv = checkDebugEnvironment()
-            val isBeingDebugged = tracerPid > 0 || debuggerAttached || debugFlags || ptraceStatus || debugFiles || debugEnv
+            val isBeingDebugged =
+                tracerPid > 0 || debuggerAttached || debugFlags || ptraceStatus || debugFiles || debugEnv
             if (isBeingDebugged) {
                 false
             } else {

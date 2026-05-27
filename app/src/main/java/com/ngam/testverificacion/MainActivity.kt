@@ -9,13 +9,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.ngam.check_device.logic.CheckDevice
 import com.ngam.check_device.tap.HideOverlay
 import com.ngam.testverificacion.ui.theme.TestVerificacionTheme
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,17 +40,25 @@ class MainActivity : ComponentActivity() {
 fun Greeting() {
     val context = LocalContext.current
     val text = rememberSaveable { mutableStateOf("") }
-    try {
+    val scope = rememberCoroutineScope()
+
         val activity = context as Activity
         HideOverlay(context).apply(activity.window)
-        text.value = if (CheckDevice(context).checkIsRoot().checkIsHooking().checkIsEmulador().checkIsUsbEnabled().checkOrigin().build()) {
-            "tu dispositivo es vulnerable"
 
-        } else {
-            "tu dispostivo es seguro"
+        LaunchedEffect(Unit)  {
+            scope.launch {
+                try {
+                    text.value = if (CheckDevice(context).checkIsRoot().checkIsHooking().checkIsEmulador().checkIsUsbEnabled().checkOrigin().build()) {
+                        "tu dispositivo es vulnerable"
+
+                    } else {
+                        "tu dispostivo es seguro"
+                    }
+                }catch (e: Throwable){
+                    e.printStackTrace()
+                }
+
+            }
         }
-    } catch (e: Throwable) {
-        e.printStackTrace()
-    }
     Text(text = text.value)
 }
